@@ -18,11 +18,11 @@
 int main(int argc, char *argv[])
 {
   // timing variables
-  double start_total, stop_total, start_step, stop_step;
+  double start_total, stop_total, start_step, stop_step, start_hydro;
   #ifdef CPU_TIME
   double stop_init, init_min, init_max, init_avg;
   double start_bound, stop_bound, bound_min, bound_max, bound_avg;
-  double start_hydro, stop_hydro, hydro_min, hydro_max, hydro_avg;
+  double stop_hydro, hydro_min, hydro_max, hydro_avg;
   double init, bound, hydro;
   init = bound = hydro = 0;
   #endif //CPU_TIME
@@ -162,6 +162,7 @@ int main(int argc, char *argv[])
   {
     // get the start time
     start_step = get_time();
+    start_hydro = get_time();
     
     // calculate the timestep
     G.set_dt(dti);
@@ -177,6 +178,7 @@ int main(int argc, char *argv[])
     
     // Advance the grid by one timestep
     dti = G.Update_Hydro_Grid();
+    
     
     // update the simulation time ( t += dt )
     G.Update_Time();
@@ -206,13 +208,18 @@ int main(int argc, char *argv[])
     stop_step = get_time();
     stop_total = get_time();
     G.H.t_wall = stop_total-start_total;
+    
+    G.H.t_hydro += get_time() - start_hydro;
+    
     #ifdef MPI_CHOLLA
     G.H.t_wall = ReduceRealMax(G.H.t_wall);
     #endif 
+    
+    
     chprintf("n_step: %d   sim time: %10.7f   sim timestep: %7.4e  timestep time = %7.3f ms  ",
               G.H.n_step, G.H.t, G.H.dt, (stop_step-start_step)*1000 );
-    chprintf("compute time = %7.3f s  data_transfer time = %7.3f s  total time = %7.4f s\n\n",
-              G.H.t_wall-G.H.t_data_wall, G.H.t_data_wall, G.H.t_wall);
+    chprintf("hydro time = %7.3f s  data_transfer time = %7.3f s  total time = %7.4f s\n\n",
+              G.H.t_hydro-G.H.t_data_wall, G.H.t_data_wall, G.H.t_wall);
     
     #ifdef OUTPUT_ALWAYS
     G.H.Output_Now = true;

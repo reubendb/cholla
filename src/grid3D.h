@@ -208,6 +208,7 @@ struct Header
   /*! \var t_wall
   *  \brief Wall time */
   Real t_wall;
+  Real t_hydro;
   Real t_data_wall;
 
   /*! \var n_step

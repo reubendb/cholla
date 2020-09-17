@@ -171,6 +171,7 @@ void Grid3D::Initialize(struct parameters *P)
   H.n_step = 0;
   // and the wall time
   H.t_wall = 0.0;
+  H.t_hydro = 0.0;
   H.t_data_wall = 0.0;
   // and initialize the timestep
   H.dt = 0.0;
