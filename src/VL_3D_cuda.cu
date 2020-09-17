@@ -30,7 +30,8 @@ __global__ void Update_Conserved_Variables_3D_half(Real *dev_conserved, Real *de
 
 
 
-Real VL_Algorithm_3D_CUDA(Real *host_conserved0, Real *host_conserved1, int nx, int ny, int nz, int x_off, int y_off, int z_off, int n_ghost, Real dx, Real dy, Real dz, Real xbound, Real ybound, Real zbound, Real dt, int n_fields, Real density_floor, Real U_floor, Real *host_grav_potential, Real max_dti_slow)
+Real VL_Algorithm_3D_CUDA(Real *host_conserved0, Real *host_conserved1, int nx, int ny, int nz, int x_off, int y_off, int z_off, int n_ghost, Real dx, Real dy, Real dz, Real xbound, Real ybound, Real zbound, Real dt, int n_fields, Real density_floor, Real U_floor, Real *host_grav_potential, Real
+max_dti_slow, Real *t_data_wall)
 {
   //Here, *host_conserved contains the entire
   //set of conserved variables on the grid
@@ -43,7 +44,8 @@ Real VL_Algorithm_3D_CUDA(Real *host_conserved0, Real *host_conserved1, int nx, 
   #ifdef COOLING_GPU
   Real min_dt = 1e10;
   #endif  
-
+  
+  double dt_start; // data transfer timers
 
   if ( !block_size ) {
     // calculate the dimensions for the subgrid blocks
@@ -142,10 +144,12 @@ Real VL_Algorithm_3D_CUDA(Real *host_conserved0, Real *host_conserved1, int nx, 
     get_offsets_3D(nx_s, ny_s, nz_s, n_ghost, x_off, y_off, z_off, block, block1_tot, block2_tot, block3_tot, remainder1, remainder2, remainder3, &x_off_s, &y_off_s, &z_off_s);
 
     // copy the conserved variables onto the GPU
+    dt_start = get_time ();
     CudaSafeCall( cudaMemcpy(dev_conserved, tmp1, n_fields*BLOCK_VOL*sizeof(Real), cudaMemcpyHostToDevice) );
     #if defined( GRAVITY )
     CudaSafeCall( cudaMemcpy(dev_grav_potential, temp_potential, BLOCK_VOL*sizeof(Real), cudaMemcpyHostToDevice) );
     #endif
+    *t_data_wall += get_time ( ) - dt_start ;
  
 
     // Step 1: Use PCM reconstruction to put primitive variables into interface arrays
@@ -264,6 +268,7 @@ Real VL_Algorithm_3D_CUDA(Real *host_conserved0, Real *host_conserved1, int nx, 
     hipLaunchKernelGGL(Calc_dt_3D, dim1dGrid, dim1dBlock, 0, 0, dev_conserved, nx_s, ny_s, nz_s, n_ghost, dx, dy, dz, dev_dti_array, gama, max_dti_slow );
     CudaCheckError();
 
+    dt_start = get_time();
     // copy the updated conserved variable array back to the CPU
     CudaSafeCall( cudaMemcpy(tmp2, dev_conserved, n_fields*BLOCK_VOL*sizeof(Real), cudaMemcpyDeviceToHost) );
 
@@ -272,13 +277,18 @@ Real VL_Algorithm_3D_CUDA(Real *host_conserved0, Real *host_conserved1, int nx, 
 
     // copy the dti array onto the CPU
     CudaSafeCall( cudaMemcpy(host_dti_array, dev_dti_array, ngrid*sizeof(Real), cudaMemcpyDeviceToHost) );
+    
+    *t_data_wall += get_time() - dt_start;
+    
     // find maximum inverse timestep from CFL condition
     for (int i=0; i<ngrid; i++) {
       max_dti = fmax(max_dti, host_dti_array[i]);
     }
     #ifdef COOLING_GPU
     // copy the dt array from cooling onto the CPU
+    dt_start = get_time();
     CudaSafeCall( cudaMemcpy(host_dt_array, dev_dt_array, ngrid*sizeof(Real), cudaMemcpyDeviceToHost) );
+    *t_data_wall += get_time() - dt_start;
     // find maximum inverse timestep from cooling time
     for (int i=0; i<ngrid; i++) {
       min_dt = fmin(min_dt, host_dt_array[i]);

@@ -209,8 +209,10 @@ int main(int argc, char *argv[])
     #ifdef MPI_CHOLLA
     G.H.t_wall = ReduceRealMax(G.H.t_wall);
     #endif 
-    chprintf("n_step: %d   sim time: %10.7f   sim timestep: %7.4e  timestep time = %9.3f ms   total time = %9.4f s\n\n", 
-      G.H.n_step, G.H.t, G.H.dt, (stop_step-start_step)*1000, G.H.t_wall);
+    chprintf("n_step: %d   sim time: %10.7f   sim timestep: %7.4e  timestep time = %7.3f ms  ",
+              G.H.n_step, G.H.t, G.H.dt, (stop_step-start_step)*1000 );
+    chprintf("compute time = %7.3f s  data_transfer time = %7.3f s  total time = %7.4f s\n\n",
+              G.H.t_wall-G.H.t_data_wall, G.H.t_data_wall, G.H.t_wall);
     
     #ifdef OUTPUT_ALWAYS
     G.H.Output_Now = true;
