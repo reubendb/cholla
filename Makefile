@@ -98,7 +98,7 @@ ifdef HIPCONFIG
   LDFLAGS := $(CXXFLAGS)
   LIBS += -L$(ROCM_PATH)/lib -lamdhip64 -lhsa-runtime64
 else
-  CXXFLAGS += $(CUDA_ROOT)/include
+  CXXFLAGS += -I$(CUDA_ROOT)/include
   GPUCXX ?= nvcc
   GPUFLAGS += --expt-extended-lambda -g -O3 -arch sm_70 -fmad=false
   LD := $(CXX)
